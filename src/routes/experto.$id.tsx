@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, CalendarClock, Clock } from "lucide-react";
 import { COP, getDeveloper } from "@/lib/developers";
 
@@ -132,14 +132,6 @@ function SlotSection({
           </button>
         ))}
       </div>
-      <Link
-        to="/"
-        className="sr-only"
-        aria-hidden="true"
-        tabIndex={-1}
-      >
-        inicio
-      </Link>
     </section>
   );
 }
