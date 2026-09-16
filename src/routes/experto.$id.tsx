@@ -57,7 +57,7 @@ function DeveloperProfile() {
             <div>
               <h1 className="text-xl font-extrabold text-foreground">{dev.name}</h1>
               <p className="text-sm font-semibold text-navy/70">{dev.specialty}</p>
-              <span className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-1 text-[11px] font-bold text-success">
+              <span className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-lavender/10 px-2.5 py-1 text-[11px] font-bold text-lavender">
                 <span className="h-1.5 w-1.5 rounded-full bg-success" />
                 Disponible hoy
               </span>
