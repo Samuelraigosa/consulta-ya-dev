@@ -121,7 +121,7 @@ function Home() {
                       <h3 className="font-bold text-foreground">{dev.name}</h3>
                       <p className="text-xs font-semibold text-navy/70">{dev.specialty}</p>
                     </div>
-                    <span className="shrink-0 rounded-full bg-success/10 px-2.5 py-1 text-[11px] font-bold text-success">
+                    <span className="shrink-0 rounded-full bg-lavender/10 px-2.5 py-1 text-[11px] font-bold text-lavender">
                       Disponible hoy
                     </span>
                   </div>
