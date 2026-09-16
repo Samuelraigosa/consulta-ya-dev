@@ -132,7 +132,7 @@ function Home() {
                     </span>
                     <span className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Clock className="h-3.5 w-3.5" />
-                      {dev.slots[0].duration} min
+                      {dev.slots[0]?.duration ?? 30} min
                     </span>
                   </div>
                 </div>
