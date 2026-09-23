@@ -31,15 +31,17 @@ function Home() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return developers.filter((d) => {
-      const matchesSpecialty = specialty === "Todos" || d.specialty.includes(specialty);
-      const matchesQuery =
-        !q ||
-        d.name.toLowerCase().includes(q) ||
-        d.specialty.toLowerCase().includes(q) ||
-        d.tech.some((t) => t.toLowerCase().includes(q));
-      return matchesSpecialty && matchesQuery;
-    });
+    return developers
+      .filter((d) => {
+        const matchesSpecialty = specialty === "Todos" || d.specialty.includes(specialty);
+        const matchesQuery =
+          !q ||
+          d.name.toLowerCase().includes(q) ||
+          d.specialty.toLowerCase().includes(q) ||
+          d.tech.some((t) => t.toLowerCase().includes(q));
+        return matchesSpecialty && matchesQuery;
+      })
+      .sort((a, b) => a.priceFrom - b.priceFrom);
   }, [query, specialty]);
 
   return (
