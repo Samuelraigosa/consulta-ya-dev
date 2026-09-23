@@ -46,7 +46,9 @@ function Home() {
     <div className="mx-auto min-h-screen w-full max-w-md bg-background pb-10">
       {/* Header navy */}
       <header className="rounded-b-3xl bg-navy px-5 pb-8 pt-10 text-primary-foreground">
-        <p className="text-sm font-medium text-primary-foreground/70">Hola, bienvenido a</p>
+        <p className="text-sm font-medium text-primary-foreground/70">
+          Bienvenido a Consulta ya, ¿qué error te tiene frenado hoy?
+        </p>
         <h1 className="mt-1 text-3xl font-extrabold tracking-tight">
           Consulta <span className="text-success">Ya</span>
         </h1>
