@@ -1,7 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Search, Clock, Zap } from "lucide-react";
+import { Search, Clock, Zap, Loader2 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { COP, developers, SPECIALTIES } from "@/lib/developers";
+import { useQuery } from "@tanstack/react-query";
+import { COP, SPECIALTIES } from "@/lib/developers";
+import { supabase, type DeveloperRow } from "@/lib/supabase";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -25,9 +27,54 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
+interface DeveloperMapped {
+  id: string;
+  name: string;
+  specialty: string;
+  priceFrom: number;
+  photo: string;
+  shortBio: string;
+  tech: string[];
+  slots: Array<{ duration: number }>;
+}
+
+const DEFAULT_AVATAR =
+  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80";
+
+async function fetchDevelopers(): Promise<DeveloperMapped[]> {
+  const { data, error } = await supabase
+    .from("developers")
+    .select("*")
+    .order("price_cop", { ascending: true });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data as DeveloperRow[]).map((d) => ({
+    id: d.id,
+    name: d.full_name ?? "Desarrollador Experto",
+    specialty: d.specialty ?? "Desarrollo General",
+    priceFrom: Number(d.price_cop) || 0,
+    photo: DEFAULT_AVATAR,
+    shortBio: `Experto en ${d.specialty ?? "desarrollo de software"} disponible para resolver dudas técnicas y bugs en vivo.`,
+    tech: d.specialty ? [d.specialty] : [],
+    slots: [{ duration: 30 }],
+  }));
+}
+
 function Home() {
   const [query, setQuery] = useState("");
   const [specialty, setSpecialty] = useState<string>("Todos");
+
+  const {
+    data: developers = [],
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["developers"],
+    queryFn: fetchDevelopers,
+  });
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -42,7 +89,7 @@ function Home() {
         return matchesSpecialty && matchesQuery;
       })
       .sort((a, b) => a.priceFrom - b.priceFrom);
-  }, [query, specialty]);
+  }, [developers, query, specialty]);
 
   return (
     <div className="mx-auto min-h-screen w-full max-w-md bg-background pb-10">
@@ -102,53 +149,68 @@ function Home() {
           </span>
         </div>
 
-        <div className="mt-4 space-y-4">
-          {filtered.map((dev) => (
-            <Link
-              key={dev.id}
-              to="/experto/$id"
-              params={{ id: dev.id }}
-              className="block rounded-3xl border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md"
-            >
-              <div className="flex items-start gap-4">
-                <img
-                  src={dev.photo}
-                  alt={`Foto de ${dev.name}`}
-                  loading="lazy"
-                  width={816}
-                  height={816}
-                  className="h-16 w-16 shrink-0 rounded-full object-cover ring-2 ring-success/20"
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <h3 className="font-bold text-foreground">{dev.name}</h3>
-                      <p className="text-xs font-semibold text-navy/70">{dev.specialty}</p>
+        {isLoading && (
+          <div className="mt-8 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin text-success" />
+            Cargando expertos...
+          </div>
+        )}
+
+        {isError && (
+          <p className="mt-6 rounded-2xl border border-destructive/20 bg-destructive/10 p-4 text-center text-sm text-destructive">
+            Ocurrió un error al cargar la lista de expertos. Intenta de nuevo más tarde.
+          </p>
+        )}
+
+        {!isLoading && !isError && (
+          <div className="mt-4 space-y-4">
+            {filtered.map((dev) => (
+              <Link
+                key={dev.id}
+                to="/experto/$id"
+                params={{ id: dev.id }}
+                className="block rounded-3xl border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md"
+              >
+                <div className="flex items-start gap-4">
+                  <img
+                    src={dev.photo}
+                    alt={`Foto de ${dev.name}`}
+                    loading="lazy"
+                    width={816}
+                    height={816}
+                    className="h-16 w-16 shrink-0 rounded-full object-cover ring-2 ring-success/20"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h3 className="font-bold text-foreground">{dev.name}</h3>
+                        <p className="text-xs font-semibold text-navy/70">{dev.specialty}</p>
+                      </div>
+                      <span className="shrink-0 rounded-full bg-lavender/10 px-2.5 py-1 text-[11px] font-bold text-lavender">
+                        Disponible hoy
+                      </span>
                     </div>
-                    <span className="shrink-0 rounded-full bg-lavender/10 px-2.5 py-1 text-[11px] font-bold text-lavender">
-                      Disponible hoy
-                    </span>
-                  </div>
-                  <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{dev.shortBio}</p>
-                  <div className="mt-3 flex items-center justify-between">
-                    <span className="text-sm font-bold text-foreground">
-                      Desde {COP(dev.priceFrom)}
-                    </span>
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Clock className="h-3.5 w-3.5" />
-                      {dev.slots[0]?.duration ?? 30} min
-                    </span>
+                    <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{dev.shortBio}</p>
+                    <div className="mt-3 flex items-center justify-between">
+                      <span className="text-sm font-bold text-foreground">
+                        Desde {COP(dev.priceFrom)}
+                      </span>
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Clock className="h-3.5 w-3.5" />
+                        {dev.slots[0]?.duration ?? 30} min
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </Link>
-          ))}
-          {filtered.length === 0 && (
-            <p className="rounded-2xl border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
-              No encontramos expertos para esa búsqueda. Intenta con otra especialidad.
-            </p>
-          )}
-        </div>
+              </Link>
+            ))}
+            {filtered.length === 0 && (
+              <p className="rounded-2xl border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
+                No encontramos expertos para esa búsqueda. Intenta con otra especialidad.
+              </p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
