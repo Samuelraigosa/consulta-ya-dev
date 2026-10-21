@@ -1,8 +1,13 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, CheckCircle2, MessageSquareText, ReceiptText } from "lucide-react";
+import { ArrowLeft, CheckCircle2, MessageSquareText, ReceiptText, User } from "lucide-react";
 import { useState } from "react";
 import { z } from "zod";
-import { COP, getDeveloper } from "@/lib/developers";
+import {
+  COP,
+  DatabaseDeveloperRow,
+  mapRowToDeveloper,
+} from "@/lib/developers";
+import { supabase } from "@/lib/supabase";
 
 const searchSchema = z.object({
   dev: z.string().default(""),
@@ -11,6 +16,35 @@ const searchSchema = z.object({
 
 export const Route = createFileRoute("/confirmar")({
   validateSearch: searchSchema,
+  loaderDeps: ({ search: { dev, slot } }) => ({ dev, slot }),
+  loader: async ({ deps }) => {
+    if (!deps.dev || !deps.slot) {
+      return { dev: null, slot: null };
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from("developers")
+        .select("*")
+        .eq("id", deps.dev)
+        .single();
+
+      if (error || !data) {
+        return { dev: null, slot: null };
+      }
+
+      const devMapped = mapRowToDeveloper(data as DatabaseDeveloperRow);
+      const slotMapped = devMapped.slots.find((s) => s.id === deps.slot) || null;
+
+      if (!slotMapped) {
+        return { dev: null, slot: null };
+      }
+
+      return { dev: devMapped, slot: slotMapped };
+    } catch {
+      return { dev: null, slot: null };
+    }
+  },
   head: () => ({
     meta: [
       { title: "Confirmar reserva — Consulta Ya" },
@@ -31,12 +65,14 @@ export const Route = createFileRoute("/confirmar")({
 });
 
 function ConfirmBooking() {
-  const { dev: devId, slot: slotId } = Route.useSearch();
+  const { dev, slot } = Route.useLoaderData();
   const navigate = useNavigate();
-  const dev = getDeveloper(devId);
-  const slot = dev?.slots.find((s) => s.id === slotId);
+
+  const [clientName, setClientName] = useState("");
   const [problem, setProblem] = useState("");
   const [confirmed, setConfirmed] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   if (!dev || !slot) {
     return (
@@ -57,6 +93,38 @@ function ConfirmBooking() {
 
   const commission = Math.round(slot.price * 0.15);
   const total = slot.price + commission;
+
+  const isFormValid = clientName.trim() !== "" && problem.trim() !== "";
+
+  const handleConfirm = async () => {
+    if (!isFormValid || submitting) return;
+
+    try {
+      setSubmitting(true);
+      setSubmitError(null);
+
+      const { error } = await supabase.from("bookings").insert([
+        {
+          developer_id: dev.id,
+          client_name: clientName.trim(),
+          problem_description: problem.trim(),
+          booking_time: slot.id, // Timestamp ISO del slot
+        },
+      ]);
+
+      if (error) {
+        throw error;
+      }
+
+      setConfirmed(true);
+    } catch (err: any) {
+      setSubmitError(
+        err?.message || "Ocurrió un error al guardar la reserva. Por favor intenta de nuevo."
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="mx-auto min-h-screen w-full max-w-md bg-background pb-10">
@@ -130,33 +198,60 @@ function ConfirmBooking() {
           </dl>
         </section>
 
-        {/* Problem description */}
-        <section className="rounded-3xl border border-border bg-card p-5">
-          <label
-            htmlFor="problem"
-            className="flex items-center gap-2 text-sm font-bold text-foreground"
-          >
-            <MessageSquareText className="h-4 w-4 text-navy" />
-            Cuéntanos tu problema técnico
-          </label>
-          <textarea
-            id="problem"
-            value={problem}
-            onChange={(e) => setProblem(e.target.value)}
-            rows={4}
-            placeholder="Ej: mi despliegue falla y no entiendo el error"
-            className="mt-3 w-full resize-none rounded-2xl border border-border bg-background p-3.5 text-sm outline-none placeholder:text-muted-foreground focus:border-success focus:ring-2 focus:ring-success/30"
-          />
-          <p className="mt-2 text-xs text-muted-foreground">
-            Mientras más contexto des, más rápido te ayuda el experto.
-          </p>
+        {/* Client Name & Problem description */}
+        <section className="space-y-4 rounded-3xl border border-border bg-card p-5">
+          <div>
+            <label
+              htmlFor="clientName"
+              className="flex items-center gap-2 text-sm font-bold text-foreground"
+            >
+              <User className="h-4 w-4 text-navy" />
+              Tu nombre
+            </label>
+            <input
+              id="clientName"
+              type="text"
+              value={clientName}
+              onChange={(e) => setClientName(e.target.value)}
+              placeholder="Ej: Santiago Moreno"
+              className="mt-3 w-full rounded-2xl border border-border bg-background p-3.5 text-sm outline-none placeholder:text-muted-foreground focus:border-success focus:ring-2 focus:ring-success/30"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="problem"
+              className="flex items-center gap-2 text-sm font-bold text-foreground"
+            >
+              <MessageSquareText className="h-4 w-4 text-navy" />
+              Cuéntanos tu problema técnico
+            </label>
+            <textarea
+              id="problem"
+              value={problem}
+              onChange={(e) => setProblem(e.target.value)}
+              rows={4}
+              placeholder="Ej: mi despliegue falla y no entiendo el error"
+              className="mt-3 w-full resize-none rounded-2xl border border-border bg-background p-3.5 text-sm outline-none placeholder:text-muted-foreground focus:border-success focus:ring-2 focus:ring-success/30"
+            />
+            <p className="mt-2 text-xs text-muted-foreground">
+              Mientras más contexto des, más rápido te ayuda el experto.
+            </p>
+          </div>
         </section>
 
+        {submitError && (
+          <p className="rounded-2xl border border-dashed border-red-300 bg-card p-4 text-center text-xs text-red-500">
+            {submitError}
+          </p>
+        )}
+
         <button
-          onClick={() => setConfirmed(true)}
-          className="w-full rounded-2xl bg-success py-4 text-base font-extrabold text-success-foreground shadow-lg shadow-success/25 transition-transform active:scale-[0.98]"
+          onClick={handleConfirm}
+          disabled={!isFormValid || submitting}
+          className="w-full rounded-2xl bg-success py-4 text-base font-extrabold text-success-foreground shadow-lg shadow-success/25 transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Confirmar reserva · {COP(total)}
+          {submitting ? "Guardando…" : `Confirmar reserva · ${COP(total)}`}
         </button>
 
         <Link
