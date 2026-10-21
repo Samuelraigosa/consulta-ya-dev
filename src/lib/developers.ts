@@ -23,6 +23,90 @@ export interface Developer {
   slots: TimeSlot[];
 }
 
+export interface DatabaseDeveloperRow {
+  id: string;
+  created_at: string;
+  full_name: string;
+  specialty: string;
+  price_cop: number;
+  available_slots: string[];
+  photo: string;
+  short_bio: string;
+  bio: string;
+  tech: string[];
+  duration_min: number;
+}
+
+const photoByKey: Record<string, string> = {
+  santiago: santiagoImg,
+  valeria: valeriaImg,
+  mateo: mateoImg,
+  andres: andresImg,
+};
+
+export const mapRowToDeveloper = (row: DatabaseDeveloperRow): Developer => {
+  const timeZone = "America/Bogota";
+  const now = new Date();
+
+  // Obtener la fecha en formato YYYY-MM-DD para Colombia
+  const getColDateString = (date: Date) =>
+    new Intl.DateTimeFormat("en-CA", { timeZone }).format(date);
+
+  const todayStr = getColDateString(now);
+
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = getColDateString(tomorrow);
+
+  const slots: TimeSlot[] = (row.available_slots || [])
+    .map((slotIso) => {
+      const slotDate = new Date(slotIso);
+
+      // Descartar horarios pasados
+      if (slotDate <= now) return null;
+
+      const slotDayStr = getColDateString(slotDate);
+      let day: "Hoy" | "Mañana" | null = null;
+
+      if (slotDayStr === todayStr) {
+        day = "Hoy";
+      } else if (slotDayStr === tomorrowStr) {
+        day = "Mañana";
+      } else {
+        return null; // Ignorar horarios que no sean de hoy ni de mañana
+      }
+
+      // Formatear hora a lenguaje natural en español (ej: "2:00 p.m.")
+      const timeFormatted = new Intl.DateTimeFormat("es-CO", {
+        timeZone,
+        hour: "numeric",
+        minute: "numeric",
+        hour12: true,
+      }).format(slotDate);
+
+      return {
+        id: slotIso,
+        label: `${day} ${timeFormatted}`,
+        day,
+        duration: row.duration_min,
+        price: Number(row.price_cop),
+      };
+    })
+    .filter((s): s is TimeSlot => s !== null);
+
+  return {
+    id: row.id,
+    name: row.full_name,
+    specialty: row.specialty,
+    shortBio: row.short_bio,
+    bio: row.bio,
+    photo: photoByKey[row.photo] || photoByKey.santiago,
+    tech: row.tech || [],
+    priceFrom: Number(row.price_cop),
+    slots,
+  };
+};
+
 export const COP = (value: number) =>
   new Intl.NumberFormat("es-CO", {
     style: "currency",
