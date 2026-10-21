@@ -1,11 +1,25 @@
 import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, CalendarClock, Clock } from "lucide-react";
-import { COP, getDeveloper } from "@/lib/developers";
+import {
+  COP,
+  DatabaseDeveloperRow,
+  mapRowToDeveloper,
+} from "@/lib/developers";
+import { supabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/experto/$id")({
-  loader: ({ params }) => {
-    const dev = getDeveloper(params.id);
-    if (!dev) throw notFound();
+  loader: async ({ params }) => {
+    const { data, error } = await supabase
+      .from("developers")
+      .select("*")
+      .eq("id", params.id)
+      .single();
+
+    if (error || !data) {
+      throw notFound();
+    }
+
+    const dev = mapRowToDeveloper(data as DatabaseDeveloperRow);
     return { dev };
   },
   head: ({ loaderData }) => ({
