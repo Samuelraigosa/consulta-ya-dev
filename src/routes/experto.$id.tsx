@@ -20,6 +20,26 @@ export const Route = createFileRoute("/experto/$id")({
     }
 
     const dev = mapRowToDeveloper(data as DatabaseDeveloperRow);
+
+    try {
+      const { data: bookings } = await supabase
+        .from("bookings")
+        .select("booking_time")
+        .eq("developer_id", params.id);
+
+      if (bookings && bookings.length > 0) {
+        const bookedTimestamps = new Set(
+          bookings.map((b) => new Date(b.booking_time).getTime())
+        );
+
+        dev.slots = dev.slots.filter(
+          (slot) => !bookedTimestamps.has(new Date(slot.id).getTime())
+        );
+      }
+    } catch {
+      // Si la consulta a bookings falla, mantenemos dev.slots sin filtrar
+    }
+
     return { dev };
   },
   head: ({ loaderData }) => ({
