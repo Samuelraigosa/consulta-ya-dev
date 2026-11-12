@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Search, Clock, Zap } from "lucide-react";
+import { Search, Clock, Zap, Sparkles, ArrowRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
   COP,
@@ -8,6 +8,7 @@ import {
   mapRowToDeveloper,
   SPECIALTIES,
 } from "@/lib/developers";
+import { recomendarExperto } from "@/lib/recomendar";
 import { supabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/")({
@@ -38,6 +39,15 @@ function Home() {
   const [devList, setDevList] = useState<Developer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Estados para recomendador IA
+  const [aiProblem, setAiProblem] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiResult, setAiResult] = useState<{
+    expertId: string | null;
+    mensaje: string;
+  } | null>(null);
 
   useEffect(() => {
     async function fetchDevelopers() {
@@ -73,6 +83,39 @@ function Home() {
       .sort((a, b) => a.priceFrom - b.priceFrom);
   }, [query, specialty, devList]);
 
+  const handleRecommend = async () => {
+    const trimmed = aiProblem.trim();
+    if (!trimmed || aiLoading) return;
+
+    try {
+      setAiLoading(true);
+      setAiError(null);
+      setAiResult(null);
+
+      const response = await recomendarExperto({
+        data: { problema: trimmed },
+      });
+
+      if ("error" in response && response.error) {
+        setAiError(response.error);
+      } else if ("mensaje" in response) {
+        setAiResult({
+          expertId: response.expertId,
+          mensaje: response.mensaje,
+        });
+      }
+    } catch {
+      setAiError("No pudimos procesar tu solicitud en este momento. Intenta de nuevo.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const recommendedDev = useMemo(() => {
+    if (!aiResult?.expertId) return null;
+    return devList.find((d) => d.id === aiResult.expertId) || null;
+  }, [aiResult, devList]);
+
   return (
     <div className="mx-auto min-h-screen w-full max-w-md bg-background pb-10">
       {/* Header navy */}
@@ -104,6 +147,56 @@ function Home() {
             className="w-full rounded-2xl border border-border bg-card py-3.5 pl-11 pr-4 text-sm shadow-lg shadow-navy/5 outline-none placeholder:text-muted-foreground focus:border-success focus:ring-2 focus:ring-success/30"
           />
         </div>
+
+        {/* AI Recommender Card */}
+        <section className="mt-5 rounded-3xl border border-border bg-card p-5 shadow-sm">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-success" />
+            <h2 className="text-sm font-bold text-foreground">
+              ¿No sabes qué experto necesitas?
+            </h2>
+          </div>
+
+          <textarea
+            value={aiProblem}
+            onChange={(e) => setAiProblem(e.target.value)}
+            maxLength={500}
+            rows={2}
+            placeholder="Cuéntame tu error…"
+            className="mt-3 w-full resize-none rounded-2xl border border-border bg-background p-3.5 text-sm outline-none placeholder:text-muted-foreground focus:border-success focus:ring-2 focus:ring-success/30"
+          />
+
+          <button
+            type="button"
+            onClick={handleRecommend}
+            disabled={!aiProblem.trim() || aiLoading}
+            className="mt-3 w-full rounded-2xl bg-success py-3 text-sm font-extrabold text-success-foreground shadow-sm transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {aiLoading ? "Pensando…" : "Recomendar experto"}
+          </button>
+
+          {aiError && (
+            <p className="mt-3 rounded-2xl border border-dashed border-red-300 bg-background p-3 text-center text-xs text-red-500">
+              {aiError}
+            </p>
+          )}
+
+          {aiResult && (
+            <div className="mt-3 rounded-2xl border border-success/30 bg-background p-4">
+              <p className="text-sm leading-relaxed text-foreground">{aiResult.mensaje}</p>
+              {aiResult.expertId && (
+                <Link
+                  to="/experto/$id"
+                  params={{ id: aiResult.expertId }}
+                  className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-2xl bg-navy py-2.5 text-xs font-extrabold text-primary-foreground transition-opacity hover:opacity-90"
+                >
+                  Ver perfil de {recommendedDev ? recommendedDev.name : "experto"}
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              )}
+            </div>
+          )}
+        </section>
 
         {/* Quick filters */}
         <div className="mt-5 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
