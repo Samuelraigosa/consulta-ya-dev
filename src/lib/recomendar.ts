@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabase } from "@/lib/supabase";
 
-export const GEMINI_MODEL = "gemini-2.5-flash";
+export const GEMINI_MODEL = "gemini-3.8-flash";
 
 export const PROMPT_DE_PRODUCTO = `Eres el asistente de Consulta Ya, una plataforma colombiana de consultas técnicas de 15 a 30 minutos. Recomiendas UN experto de la lista que te doy. Usa solo los datos de la lista. NUNCA inventes expertos, precios, horarios ni tecnologías. Si ningún experto sirve para el problema, dilo con amabilidad y no recomiendes ninguno (expertId null). Tono cercano, en español de Colombia, máximo 3 frases. Cuando recomiendes, menciona el nombre, la especialidad y el precio en pesos tal como están en la lista.`;
 
