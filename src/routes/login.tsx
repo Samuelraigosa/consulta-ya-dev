@@ -6,7 +6,7 @@ import { useSession } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 
 const searchSchema = z.object({
-  redirect: z.string().optional().default("/mis-reservas"),
+  redirect: z.string().optional().default("/"),
 });
 
 export const Route = createFileRoute("/login")({
@@ -30,12 +30,12 @@ export const Route = createFileRoute("/login")({
 });
 
 function getSafeRedirect(rawRedirect?: string): string {
-  if (!rawRedirect) return "/mis-reservas";
+  if (!rawRedirect) return "/";
   const trimmed = rawRedirect.trim();
   if (trimmed.startsWith("/") && !trimmed.startsWith("//")) {
     return trimmed;
   }
-  return "/mis-reservas";
+  return "/";
 }
 
 function mapAuthError(message: string): string {
