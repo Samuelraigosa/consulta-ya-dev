@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, CheckCircle2, MessageSquareText, ReceiptText, User } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
+import { useSession } from "@/lib/auth";
 import {
   COP,
   DatabaseDeveloperRow,
@@ -40,10 +41,10 @@ export const Route = createFileRoute("/confirmar")({
         return { dev: null, slot: null };
       }
 
-      // Verificar si el horario ya fue tomado
+      // Verificar si el horario ya fue tomado usando la vista pública slots_ocupados
       try {
         const { data: existingBookings } = await supabase
-          .from("bookings")
+          .from("slots_ocupados")
           .select("booking_time")
           .eq("developer_id", deps.dev);
 
@@ -58,7 +59,7 @@ export const Route = createFileRoute("/confirmar")({
           }
         }
       } catch {
-        // Si falla la consulta a bookings, continuar con el flujo normal
+        // Si falla la consulta a slots_ocupados, continuar con el flujo normal
       }
 
       return { dev: devMapped, slot: slotMapped };
@@ -87,13 +88,47 @@ export const Route = createFileRoute("/confirmar")({
 
 function ConfirmBooking() {
   const { dev, slot } = Route.useLoaderData();
+  const search = Route.useSearch();
   const navigate = useNavigate();
+  const { user, loading: sessionLoading } = useSession();
 
   const [clientName, setClientName] = useState("");
   const [problem, setProblem] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!sessionLoading && !user) {
+      const currentPath =
+        typeof window !== "undefined"
+          ? `${window.location.pathname}${window.location.search}`
+          : `/confirmar?dev=${encodeURIComponent(search.dev)}&slot=${encodeURIComponent(search.slot)}`;
+
+      navigate({
+        to: "/login",
+        search: { redirect: currentPath },
+      });
+    }
+  }, [sessionLoading, user, navigate, search.dev, search.slot]);
+
+  if (sessionLoading) {
+    return (
+      <div className="mx-auto flex min-h-screen w-full max-w-md flex-col items-center justify-center bg-background px-5 text-center">
+        <p className="text-sm font-medium text-muted-foreground">Cargando…</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="mx-auto flex min-h-screen w-full max-w-md flex-col items-center justify-center bg-background px-5 text-center">
+        <p className="text-sm font-medium text-muted-foreground">
+          Redirigiendo al inicio de sesión…
+        </p>
+      </div>
+    );
+  }
 
   if (!dev || !slot) {
     return (
