@@ -40,6 +40,27 @@ export const Route = createFileRoute("/confirmar")({
         return { dev: null, slot: null };
       }
 
+      // Verificar si el horario ya fue tomado
+      try {
+        const { data: existingBookings } = await supabase
+          .from("bookings")
+          .select("booking_time")
+          .eq("developer_id", deps.dev);
+
+        if (existingBookings && existingBookings.length > 0) {
+          const targetTime = new Date(slotMapped.id).getTime();
+          const isTaken = existingBookings.some(
+            (b) => new Date(b.booking_time).getTime() === targetTime
+          );
+
+          if (isTaken) {
+            return { dev: null, slot: null };
+          }
+        }
+      } catch {
+        // Si falla la consulta a bookings, continuar con el flujo normal
+      }
+
       return { dev: devMapped, slot: slotMapped };
     } catch {
       return { dev: null, slot: null };
@@ -113,6 +134,12 @@ function ConfirmBooking() {
       ]);
 
       if (error) {
+        if (error.code === "23505") {
+          setSubmitError(
+            "Ese horario acaba de ser reservado por otra persona. Vuelve al perfil y elige otro horario."
+          );
+          return;
+        }
         throw error;
       }
 
@@ -296,6 +323,12 @@ function ConfirmBooking() {
               className="mt-5 block w-full rounded-2xl bg-navy py-3.5 text-sm font-extrabold text-primary-foreground"
             >
               Volver al inicio
+            </Link>
+            <Link
+              to="/mis-reservas"
+              className="mt-3 block text-center text-sm font-semibold text-muted-foreground hover:text-foreground"
+            >
+              Ver o cancelar mis reservas
             </Link>
           </div>
         </div>
