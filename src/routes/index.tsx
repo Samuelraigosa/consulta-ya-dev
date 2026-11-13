@@ -133,6 +133,12 @@ function Home() {
           <Zap className="h-3.5 w-3.5 text-success" />
           Sesiones de 15 a 30 minutos con expertos verificados
         </div>
+        <Link
+          to="/mis-reservas"
+          className="mt-3 inline-flex items-center text-xs font-bold text-success hover:underline"
+        >
+          Ver o gestionar mis reservas →
+        </Link>
       </header>
 
       {/* Search */}
