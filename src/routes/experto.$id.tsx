@@ -23,7 +23,7 @@ export const Route = createFileRoute("/experto/$id")({
 
     try {
       const { data: bookings } = await supabase
-        .from("bookings")
+        .from("slots_ocupados")
         .select("booking_time")
         .eq("developer_id", params.id);
 
@@ -37,7 +37,7 @@ export const Route = createFileRoute("/experto/$id")({
         );
       }
     } catch {
-      // Si la consulta a bookings falla, mantenemos dev.slots sin filtrar
+      // Si la consulta a slots_ocupados falla, mantenemos dev.slots sin filtrar
     }
 
     return { dev };
